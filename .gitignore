@@ -1,0 +1,29 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+/.idea/deviceStreaming.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+/app/build
+
+# Exclude large archive files in root
+*.zip
+
+# Exclude generated APKs and bundles not in build folder
+*.apk
+*.ap_
+*.aab
+
+# Exclude keystore files
+*.jks
+*.keystore
