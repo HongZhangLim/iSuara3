@@ -56,32 +56,20 @@ class LandmarkExtractor(
 
     init {
         val handOptions = HandLandmarker.HandLandmarkerOptions.builder()
-            .setBaseOptions(BaseOptions.builder().setModelAssetPath("hand_landmarker.task").setDelegate(Delegate.CPU).build())
+            .setBaseOptions(BaseOptions.builder().setModelAssetPath("hand_landmarker.task").setDelegate(Delegate.GPU).build())
             .setRunningMode(RunningMode.LIVE_STREAM)
             .setNumHands(2)
             .setResultListener(this::onHandResult)
             .build()
         handLandmarker = HandLandmarker.createFromOptions(context, handOptions)
 
-        try {
-            // Try GPU First for Pose (Fastest)
-            val poseOptionsGPU = PoseLandmarker.PoseLandmarkerOptions.builder()
-                .setBaseOptions(BaseOptions.builder().setModelAssetPath("pose_landmarker_lite.task").setDelegate(Delegate.GPU).build())
-                .setRunningMode(RunningMode.LIVE_STREAM)
-                .setResultListener(this::onPoseResult)
-                .build()
-            poseLandmarker = PoseLandmarker.createFromOptions(context, poseOptionsGPU)
-            Log.d(TAG, "PoseLandmarker loaded on GPU")
-        } catch (e: Exception) {
-            // Fallback to CPU if device GPU is incompatible
-            Log.w(TAG, "GPU Delegate failed, falling back to CPU", e)
-            val poseOptionsCPU = PoseLandmarker.PoseLandmarkerOptions.builder()
-                .setBaseOptions(BaseOptions.builder().setModelAssetPath("pose_landmarker_lite.task").setDelegate(Delegate.CPU).build())
-                .setRunningMode(RunningMode.LIVE_STREAM)
-                .setResultListener(this::onPoseResult)
-                .build()
-            poseLandmarker = PoseLandmarker.createFromOptions(context, poseOptionsCPU)
-        }
+        val poseOptionsGPU = PoseLandmarker.PoseLandmarkerOptions.builder()
+            .setBaseOptions(BaseOptions.builder().setModelAssetPath("pose_landmarker_lite.task").setDelegate(Delegate.GPU).build())
+            .setRunningMode(RunningMode.LIVE_STREAM)
+            .setResultListener(this::onPoseResult)
+            .build()
+        poseLandmarker = PoseLandmarker.createFromOptions(context, poseOptionsGPU)
+        Log.d(TAG, "PoseLandmarker and HandLandmarker loaded on GPU")
     }
 
     // Added isFrontCamera parameter
