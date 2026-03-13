@@ -24,8 +24,9 @@ class SignPredictor(context: Context) {
         val bufferProgress: Float = 0f,
         val sentence: List<String> = emptyList(),
         val keypoints: FloatArray? = null,
-        val imageWidth: Int = 480,  // PINPOINT: Fixes "No parameter found"
-        val imageHeight: Int = 640  // PINPOINT: Fixes "No parameter found"
+        val imageWidth: Int = 480,
+        val imageHeight: Int = 640,
+        val isWaitingForNewSentence: Boolean = false // ADD THIS LINE
     )
 
     private val landmarkExtractor = LandmarkExtractor(context, this::onLandmarksExtracted)
@@ -122,19 +123,36 @@ class SignPredictor(context: Context) {
         }
     }
 
+    // ADD THIS VARIABLE RIGHT ABOVE updatePrediction
+    private var startNewSentenceNextWord = false
+
     private fun updatePrediction(word: String, confidence: Float) {
         val isConfident = confidence >= 0.6f
-        if (isConfident && word != lastWord && word != "Idle") {
-            sentenceWords.add(word)
-            lastWord = word
-            if (sentenceWords.size > 8) sentenceWords.removeAt(0)
+
+        // WE CHANGED THIS IF STATEMENT to allow clearing the sentence gracefully
+        if (isConfident && word != "Idle") {
+
+            // If the timer finished, clear the old sentence before adding the new word!
+            if (startNewSentenceNextWord) {
+                sentenceWords.clear()
+                lastWord = ""
+                startNewSentenceNextWord = false
+            }
+
+            if (word != lastWord) {
+                sentenceWords.add(word)
+                lastWord = word
+                if (sentenceWords.size > 8) sentenceWords.removeAt(0)
+            }
         }
+
         _state.update { it.copy(
             currentWord = if (isConfident) word else "$word?",
             confidence = confidence,
             isConfident = isConfident,
             sentence = sentenceWords.toList(),
-            bufferProgress = 1f
+            bufferProgress = 1f,
+            isWaitingForNewSentence = startNewSentenceNextWord // ADD THIS
         ) }
         cooldownCounter.set(if (isConfident) 10 else 5)
     }
@@ -149,8 +167,15 @@ class SignPredictor(context: Context) {
         synchronized(frameBuffer) { frameBuffer.clear() }
         sentenceWords.clear()
         lastWord = ""
-        previousFrame = null // Reset the smoothing state!
+        previousFrame = null
+        startNewSentenceNextWord = false // ADD THIS
         _state.update { PredictionState() }
+    }
+
+    // ADD THIS NEW FUNCTION AT THE BOTTOM
+    fun prepareForNewSentence() {
+        startNewSentenceNextWord = true
+        _state.update { it.copy(isWaitingForNewSentence = true) }
     }
     fun close() {
         landmarkExtractor.close()

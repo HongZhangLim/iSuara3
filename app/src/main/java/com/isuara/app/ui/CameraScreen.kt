@@ -71,6 +71,55 @@ fun CameraScreen(
 
     val mlExecutor = remember { Executors.newSingleThreadExecutor() }
 
+    // =========================================================================
+    // 1. AUTO-TRANSLATE & TTS FEATURE
+    // =========================================================================
+    LaunchedEffect(predictionState.currentWord) {
+        // Notice the new condition: !predictionState.isWaitingForNewSentence
+        // This prevents the TTS from looping twice if the user stays idle!
+        if (predictionState.currentWord == "Idle" &&
+            predictionState.sentence.isNotEmpty() &&
+            !isTranslating &&
+            !predictionState.isWaitingForNewSentence) {
+
+            kotlinx.coroutines.delay(2000)
+
+            val words = signPredictor.getSentenceWords()
+            if (words.isNotEmpty()) {
+                isTranslating = true
+                translatedText = ""
+
+                try {
+                    val result = geminiTranslator?.translate(words) ?: "Error: Gemini unavailable"
+                    translatedText = result
+
+                    val textToSpeak = result.ifEmpty { words.joinToString(" ") }
+                    if (textToSpeak.isNotEmpty()) {
+                        ttsService.speak(textToSpeak)
+                    }
+                } catch (e: Exception) {
+                    translatedText = "Translation failed"
+                    Log.e(TAG, "Auto-translate error", e)
+                } finally {
+                    isTranslating = false
+                    // INSTEAD OF resetAll(), tell the predictor to hold the text on
+                    // screen until the exact moment the next sign is made!
+                    signPredictor.prepareForNewSentence()
+                }
+            }
+        }
+    }
+
+    // =========================================================================
+    // 2. UI POLISH (OPTIONAL BUT RECOMMENDED)
+    // Clear the previous translation text from the screen when a NEW sentence starts
+    // =========================================================================
+    LaunchedEffect(predictionState.sentence.size) {
+        if (predictionState.sentence.size == 1 && !isTranslating) {
+            translatedText = ""
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
